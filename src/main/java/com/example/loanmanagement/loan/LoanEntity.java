@@ -1,7 +1,6 @@
 package com.example.loanmanagement.loan;
 
 import com.example.loanmanagement.customer.CustomerEntity;
-import com.example.loanmanagement.user.UserEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,6 +13,9 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "loans", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"customer_id"}, name = "unique_active_loan_per_customer")
+})
 public class LoanEntity {
 
     @Id
@@ -21,7 +23,7 @@ public class LoanEntity {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "customer_id", nullable = false) // Foreign key
+    @JoinColumn(name = "customer_id", nullable = false)
     private CustomerEntity customer;
 
     @Column(nullable = false)
@@ -31,14 +33,14 @@ public class LoanEntity {
     private BigDecimal interestRate;
 
     @Column(nullable = false)
-    private int repaymentPeriodInMonths; // Number of months
+    private int repaymentPeriodInMonths;
 
     @Column(nullable = false)
-    private String repaymentFrequency; // e.g., Monthly, Weekly, Daily
+    private String repaymentFrequency;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
-    private String status = "PENDING"; // Default status: PENDING
+    private LoanStatus status = LoanStatus.PENDING;
 
     @Column(nullable = false)
     private LocalDate startDate;
@@ -49,5 +51,27 @@ public class LoanEntity {
     @PrePersist
     public void calculateEndDate() {
         this.endDate = this.startDate.plusMonths(this.repaymentPeriodInMonths);
+    }
+
+    /**
+     * Approves the loan and sets the status to APPROVED.
+     */
+    public void approveLoan() {
+        if (this.status == LoanStatus.PENDING) {
+            this.status = LoanStatus.APPROVED;
+        } else {
+            throw new IllegalStateException("Loan must be in PENDING state to approve.");
+        }
+    }
+
+    /**
+     * Rejects the loan and sets the status to REJECTED.
+     */
+    public void rejectLoan() {
+        if (this.status == LoanStatus.PENDING) {
+            this.status = LoanStatus.REJECTED;
+        } else {
+            throw new IllegalStateException("Loan must be in PENDING state to reject.");
+        }
     }
 }

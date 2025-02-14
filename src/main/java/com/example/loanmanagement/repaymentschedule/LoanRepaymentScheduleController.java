@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -14,48 +15,76 @@ public class LoanRepaymentScheduleController {
     private final LoanRepaymentScheduleService repaymentScheduleService;
 
     /**
-     * Get the repayment schedule for a specific loan or generate a new one if it does not exist.
+     * Retrieve existing repayment schedule for a loan or generate a new one if none exists.
      */
     @GetMapping("/{loanId}")
-    public ResponseEntity<List<LoanRepaymentScheduleEntity>> getOrGenerateRepaymentSchedule(@PathVariable Long loanId) {
-        List<LoanRepaymentScheduleEntity> existingSchedule = repaymentScheduleService.getScheduleByLoan(loanId);
-
-        // If schedule exists, return it
-        if (!existingSchedule.isEmpty()) {
-            return ResponseEntity.ok(existingSchedule);
+    public ResponseEntity<?> getOrGenerateRepaymentSchedule(@PathVariable Long loanId) {
+        try {
+            List<LoanRepaymentScheduleEntity> schedule = repaymentScheduleService.getOrGenerateRepaymentSchedule(loanId);
+            return ResponseEntity.ok(schedule);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-
-        // If schedule does not exist, generate and return a new one
-        List<LoanRepaymentScheduleEntity> newSchedule = repaymentScheduleService.generateRepaymentSchedule(loanId);
-        return ResponseEntity.ok(newSchedule);
     }
 
-
-
     /**
-     * Create a new repayment schedule entry.
+     * Generate a new repayment schedule for a loan if it doesn't already exist.
      */
-    @PostMapping
-    public ResponseEntity<LoanRepaymentScheduleEntity> createRepaymentSchedule(@RequestBody LoanRepaymentScheduleEntity repaymentSchedule) {
-        LoanRepaymentScheduleEntity createdSchedule = repaymentScheduleService.createRepaymentSchedule(repaymentSchedule);
-        return ResponseEntity.status(201).body(createdSchedule);
+    @PostMapping("/{loanId}")
+    public ResponseEntity<?> generateRepaymentSchedule(@PathVariable Long loanId) {
+        try {
+            List<LoanRepaymentScheduleEntity> newSchedule = repaymentScheduleService.generateRepaymentSchedule(loanId);
+            return ResponseEntity.status(201).body(newSchedule);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage()); // Conflict: Schedule already exists
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(e.getMessage()); // Not Found: Loan doesn't exist
+        }
+    }
+
+
+    /**
+     * Get the outstanding balance for a specific loan.
+     */
+    @GetMapping("/{loanId}/outstanding-balance")
+    public ResponseEntity<BigDecimal> getOutstandingBalance(@PathVariable Long loanId) {
+        BigDecimal outstandingBalance = repaymentScheduleService.getOutstandingBalance(loanId);
+        return ResponseEntity.ok(outstandingBalance);
     }
 
     /**
-     * Update the status of a repayment schedule entry (e.g., mark it as PAID).
+     * Get the total remaining balance across all loans.
+     */
+    @GetMapping("/total-remaining-balance")
+    public ResponseEntity<BigDecimal> getTotalRemainingBalance() {
+        BigDecimal totalRemainingBalance = repaymentScheduleService.getTotalRemainingBalance();
+        return ResponseEntity.ok(totalRemainingBalance);
+    }
+
+
+    /**
+     * Update the status of a repayment schedule entry.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<LoanRepaymentScheduleEntity> updateRepaymentScheduleStatus(@PathVariable Long id, @RequestBody LoanRepaymentScheduleEntity repaymentSchedule) {
-        LoanRepaymentScheduleEntity updatedSchedule = repaymentScheduleService.updateRepaymentScheduleStatus(id, repaymentSchedule);
-        return ResponseEntity.ok(updatedSchedule);
+    public ResponseEntity<?> updateRepaymentScheduleStatus(@PathVariable Long id, @RequestBody LoanRepaymentScheduleEntity repaymentSchedule) {
+        try {
+            LoanRepaymentScheduleEntity updatedSchedule = repaymentScheduleService.updateRepaymentScheduleStatus(id, repaymentSchedule);
+            return ResponseEntity.ok(updatedSchedule);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(e.getMessage()); // Not Found: Schedule entry doesn't exist
+        }
     }
 
     /**
      * Delete a repayment schedule entry by ID.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRepaymentSchedule(@PathVariable Long id) {
-        repaymentScheduleService.deleteRepaymentSchedule(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteRepaymentSchedule(@PathVariable Long id) {
+        try {
+            repaymentScheduleService.deleteRepaymentSchedule(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(e.getMessage()); // Not Found
+        }
     }
 }

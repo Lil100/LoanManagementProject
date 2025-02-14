@@ -1,6 +1,7 @@
 package com.example.loanmanagement.repaymentschedule;
 
 import com.example.loanmanagement.loan.LoanEntity;
+import com.example.loanmanagement.loan.LoanStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -38,6 +39,7 @@ public class LoanRepaymentScheduleEntity {
     @Column(nullable = false)
     private BigDecimal remainingBalance;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status; // PENDING, PAID, OVERDUE
+    private LoanStatus status;
 }

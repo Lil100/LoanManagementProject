@@ -1,5 +1,6 @@
 package com.example.loanmanagement.user;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,7 +23,7 @@ public class UserController {
             customerService.signUp(customerEntity);
             return ResponseEntity.ok("User signed up successfully!");
         } catch (RuntimeException e) {
-            return ResponseEntity.status(409).body("User already exists");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 
